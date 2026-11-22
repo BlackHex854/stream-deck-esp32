@@ -1,0 +1,5 @@
+# Fichiers générés
+firmware/voix/sons.h
+*.wav
+__pycache__/
+*.pyc
