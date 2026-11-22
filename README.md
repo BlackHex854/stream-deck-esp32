@@ -4,14 +4,46 @@ Une mini « soundboard » faite maison : 6 switchs mécaniques branchés sur un 
 Chaque appui lance une action sur le PC Windows (ouvrir / fermer une appli).
 Le PC et l'ESP32 communiquent par le câble USB, **sur n'importe quel port COM**.
 
-| Switch | GPIO | Action sur le PC (1er appui = ouvre, 2e appui = ferme) |
+| Switch | GPIO | Action sur le PC |
 |:---:|:---:|---|
-| 1 | 13 | PowerShell + agent IA `hermes.exe` |
-| 2 | 14 | Discord |
-| 3 | 25 | Claude (application) |
-| 4 | 26 | Google Chrome (fenêtre « appli ») |
-| 5 | 27 | Epic Games Launcher |
-| 6 | 32 | Roblox |
+| 1 | 13 | PowerShell + agent IA `hermes.exe` — ouvre / ferme |
+| 2 | 14 | Discord — ouvre / ferme |
+| 3 | 25 | Claude (application) — ouvre |
+| 4 | 26 | Google Chrome (fenêtre « appli ») — ouvre / ferme |
+| 5 | 27 | Muet de Windows — coupe / rétablit le son |
+| 6 | 32 | Capture d'écran — enregistre un PNG dans `Images` |
+
+**Les switchs sont entièrement modifiables dans le code** : tu choisis ce que chacun ouvre ou ferme. Voir la section [Personnaliser les switchs](#personnaliser-les-switchs) ci-dessous.
+
+## Personnaliser les switchs
+
+Les 6 switchs ne sont pas figés : **tu peux modifier dans le code ce que chacun ouvre et ferme** sur le PC.
+
+1. **L'action (ce qui s'ouvre / se ferme)** se règle dans `pc/soundboard.py`.
+   Chaque appui envoie le numéro du switch (1 à 6) au PC. Le dictionnaire `ACTIONS` associe ce numéro à une fonction :
+
+   ```python
+   ACTIONS = {
+       "1": hermes,
+       "2": discord,
+       "3": claude,
+       "4": google,
+       "5": muet,
+       "6": capture,
+   }
+   ```
+
+   Écris ta propre fonction (par exemple `ouvre_calculatrice()`) et remplace la fonction dans la ligne voulue. Pour un bouton « ouvre / ferme », la fonction vérifie si l'application tourne : premier appui = lancement, deuxième appui = fermeture (voir `discord()` ou `google()` comme exemples).
+
+2. **Le texte affiché sur l'écran OLED** se règle dans `firmware/oled/oled.ino`, dans le tableau `noms` :
+
+   ```cpp
+   const char* noms[6] = {"Hermes", "Discord", "Claude", "Google", "Muet", "Capture"};
+   ```
+
+3. **Les GPIO utilisés** se règlent dans le tableau `pins` du même fichier (l'autre patte du switch va au GND).
+
+Après modification du firmware, retéléverse le croquis ; après modification du Python, relance `python pc/soundboard.py`. Pense à garder le même ordre des 6 numéros des deux côtés.
 
 ## Les 3 modèles
 
@@ -171,7 +203,7 @@ Pour qu'il démarre avec Windows sans fenêtre noire : crée un raccourci vers `
 
 ## Remarques
 
-- Les actions utilisent les emplacements d'installation habituels de Windows. Si une appli ne se lance pas, ajuste son chemin dans `pc/soundboard.py`.
+- Les actions utilisent les emplacements d'installation habituels de Windows. Si une appli ne se lance pas, ajuste son chemin dans `pc/soundboard.py` — c'est aussi là que tu modifies ce que les switchs ouvrent et ferment (voir [Personnaliser les switchs](#personnaliser-les-switchs)).
 - Un exécutable lancé par ce script a les droits de ton compte : ne laisse pas d'inconnus brancher une autre carte sur ton PC avec ce script lancé.
 
 ## Licence

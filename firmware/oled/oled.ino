@@ -8,6 +8,13 @@
 //
 // Bibliothèques (Library Manager) : "Adafruit SSD1306" et "Adafruit GFX Library"
 // Carte : ESP32 Dev Module, paquet esp32 version 2.0.17
+//
+// PERSONNALISER LES SWITCHS :
+//   - "pins" = les GPIO des switchs (l'autre patte de chaque switch va au GND).
+//   - "noms" = les textes affichés sur l'écran OLED.
+//   - L'action réelle (ce que le switch ouvre ou ferme sur le PC) se règle dans
+//     pc/soundboard.py, dans le dictionnaire ACTIONS : chaque appui envoie 1 à 6.
+//     Modifier la fonction associée suffit pour ouvrir/fermer ce que tu veux.
 
 #include <SPI.h>
 #include <Adafruit_GFX.h>
@@ -21,7 +28,7 @@
 Adafruit_SSD1306 display(128, 64, &SPI, OLED_DC, OLED_RST, OLED_CS);
 
 const int pins[6] = {13, 14, 25, 26, 27, 32};
-const char* noms[6] = {"Hermes", "Discord", "Claude", "Google", "Epic", "Roblox"};
+const char* noms[6] = {"Hermes", "Discord", "Claude", "Google", "Muet", "Capture"};
 bool prev[6] = {HIGH, HIGH, HIGH, HIGH, HIGH, HIGH};
 
 void bip(int freq, int ms) {
@@ -76,7 +83,7 @@ void setup() {
 }
 
 void loop() {
-  // Messages du PC : "PC" = le script Python est connecté ("T..." = heure, ignorée ici)
+  // Message du PC (le script Python envoie "PC")
   if (Serial.available()) {
     String s = Serial.readStringUntil('\n');
     s.trim();
@@ -88,6 +95,7 @@ void loop() {
     }
   }
 
+  // Switchs
   for (int i = 0; i < 6; i++) {
     bool etat = digitalRead(pins[i]);
     if (etat == LOW && prev[i] == HIGH) {

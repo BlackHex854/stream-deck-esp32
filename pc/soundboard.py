@@ -4,6 +4,9 @@ SoundBoard ESP32 : programme du PC (Windows).
 Il écoute la soundboard branchée en USB (sur n'importe quel port COM)
 et lance une action à chaque appui sur un switch.
 Il envoie aussi l'heure à la carte (utile pour le modèle « horloge »).
+
+Pour changer ce qu'ouvre/ferme un switch, éditez le dictionnaire ACTIONS
+plus bas : voir le commentaire « PERSONNALISATION DES SWITCHS ».
 """
 import ctypes
 import os
@@ -16,6 +19,10 @@ import serial.tools.list_ports
 user32 = ctypes.windll.user32
 WM_CLOSE = 0x0010
 CREATE_NEW_CONSOLE = 0x00000010
+VK_VOLUME_MUTE = 0x00AD
+KEYEVENTF_KEYUP = 0x0002
+user32.keybd_event.argtypes = [ctypes.c_ubyte, ctypes.c_ubyte, ctypes.c_uint, ctypes.c_size_t]
+user32.keybd_event.restype = None
 
 # Chemin de l'agent IA lancé par le switch 1 (modifie-le si besoin)
 HERMES = os.path.expandvars(r"%LOCALAPPDATA%\hermes\bin\hermes.exe")
@@ -104,45 +111,43 @@ def google():
     print("Chrome introuvable")
 
 
-def epic():
-    if processus_actif("EpicGamesLauncher.exe"):
-        subprocess.run(["taskkill", "/IM", "EpicGamesLauncher.exe", "/F"],
-                       capture_output=True)
-        return
-    chemins = [
-        r"C:\Program Files (x86)\Epic Games\Launcher\Portal\Binaries\Win64\EpicGamesLauncher.exe",
-        r"C:\Program Files (x86)\Epic Games\Launcher\Portal\Binaries\Win32\EpicGamesLauncher.exe",
-        r"C:\Program Files\Epic Games\Launcher\Portal\Binaries\Win64\EpicGamesLauncher.exe",
-    ]
-    for c in chemins:
-        if os.path.exists(c):
-            subprocess.Popen([c])
-            return
-    try:
-        os.startfile("com.epicgames.launcher://")
-    except OSError:
-        print("Epic Games Launcher introuvable : est-il installé ?")
+def muet():
+    """1er appui : coupe le son de Windows ; 2e appui : le remet."""
+    user32.keybd_event(VK_VOLUME_MUTE, 0, 0, 0)
+    user32.keybd_event(VK_VOLUME_MUTE, 0, KEYEVENTF_KEYUP, 0)
 
 
-def roblox():
-    if processus_actif("RobloxPlayerBeta.exe"):
-        subprocess.run(["taskkill", "/IM", "RobloxPlayerBeta.exe", "/F"],
-                       capture_output=True)
-    else:
-        try:
-            os.startfile("roblox://")
-        except OSError:
-            print("Roblox introuvable : est-il installé ?")
+def capture():
+    """Enregistre une capture de l'écran dans le dossier Images."""
+    dossier = os.path.join(os.path.expanduser("~"), "Pictures")
+    os.makedirs(dossier, exist_ok=True)
+    chemin = os.path.join(dossier, "capture_" + time.strftime("%Y%m%d_%H%M%S") + ".png")
+    script = (
+        "Add-Type -AssemblyName System.Windows.Forms,System.Drawing; "
+        "$b=[System.Windows.Forms.Screen]::PrimaryScreen.Bounds; "
+        "$bmp=New-Object System.Drawing.Bitmap($b.Width,$b.Height); "
+        "$g=[System.Drawing.Graphics]::FromImage($bmp); "
+        "$g.CopyFromScreen($b.Location,[System.Drawing.Point]::Empty,$b.Size); "
+        f"$bmp.Save('{chemin}'); $g.Dispose(); $bmp.Dispose()"
+    )
+    subprocess.run(["powershell", "-NoProfile", "-Command", script], capture_output=True)
+    print("Capture enregistrée :", chemin)
 
 
+# ---------- PERSONNALISATION DES SWITCHS ----------
+# Chaque appui sur la carte envoie son numéro (1 à 6). Ce dictionnaire associe
+# ce numéro à la fonction à lancer sur le PC. Pour changer ce qu'un switch
+# ouvre ou ferme, modifie la fonction correspondante ci-dessus (ou remplace-la
+# ici par une autre fonction). Les mêmes noms s'affichent sur l'écran OLED via
+# le tableau "noms" dans firmware/oled/oled.ino.
 # Switch 1 à 6 (même ordre que les GPIO du firmware)
 ACTIONS = {
     "1": hermes,
     "2": discord,
     "3": claude,
     "4": google,
-    "5": epic,
-    "6": roblox,
+    "5": muet,
+    "6": capture,
 }
 
 
